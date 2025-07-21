@@ -87,6 +87,7 @@ export default {
                 axios
                     .post('http://127.0.0.1:8000/api/v1/users/', formData)
                     .then(response => {
+
                         toast({
                             message: 'Учетная запись создана, входите!',
                             type: 'is-succesful',
@@ -95,20 +96,16 @@ export default {
                             duration: 2000,
                             position: 'bottom-right',
                         })
-
-                        this.$router.push('/log-in')
+                        this.$router.push('/login')
                     })
                     .catch(error => {
                         if (error.response) {
                             for (const property in error.response.data) {
                                 this.errors.push(`${property}: ${error.response.data[property]}`)
                             }
-
                             console.log(JSON.stringify(error.response.data))
-
                         } else if (error.message) {
                             this.errors.push('Что-то пошло не так. Попробуйте снова')
-
                             console.log(error.message)
                         }
                     })

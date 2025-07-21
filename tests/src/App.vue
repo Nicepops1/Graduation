@@ -13,7 +13,8 @@
     <div class="navbar-menu" id="navbar-menu">
       <div class="navbar-end">
         <router-link to="/profile" class="navbar-item">Профиль</router-link>
-        <router-link to="/tests" class="navbar-item">Тесты</router-link>
+        <router-link to="/testcreator" class="navbar-item">Создать тест</router-link>
+        <router-link to="/testexecutor" class="navbar-item">Тестирование</router-link>
         <router-link to="/results" class="navbar-item">Результаты</router-link>
 
       </div>
