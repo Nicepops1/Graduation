@@ -22,9 +22,10 @@ class SysAnswers(models.Model):
 class UserAnswers(models.Model):
     question_ID = models.ForeignKey(Question, on_delete=models.CASCADE)
     user_ID = models.ForeignKey(User, on_delete=models.CASCADE)
-    answer_ID = models.ForeignKey(SysAnswers, on_delete=models.CASCADE)
+    answer_ID = models.ForeignKey(SysAnswers, on_delete=models.CASCADE, null=True, blank=True)
     waste_time = models.TimeField()
     text = models.CharField(max_length=200, null=True)
+    result = models.ForeignKey('Result', on_delete=models.CASCADE, null=True, blank=True)
 
 class Result(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

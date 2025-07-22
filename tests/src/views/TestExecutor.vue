@@ -4,18 +4,19 @@
     <div v-if="!selectedTest">
       <div v-if="loading" class="has-text-centered">Загрузка тестов...</div>
       <div v-else>
-        <div class="field">
-          <label class="label">Выберите тест для прохождения</label>
-          <div class="control">
-            <div class="select is-fullwidth">
-              <select v-model="selectedTestId">
-                <option disabled value="">-- Выберите тест --</option>
-                <option v-for="test in tests" :key="test.id" :value="test.id">{{ test.title }}</option>
-              </select>
+        <div class="field" style="position:relative;">
+          <label class="label">Поиск теста</label>
+          <div class="control has-icons-left">
+            <input class="input" type="text" v-model="searchQuery" placeholder="Введите название теста..." autocomplete="off" @focus="showSuggestions = true" @blur="hideSuggestions" @input="showSuggestions = true">
+            <span class="icon is-left"><i class="fas fa-search"></i></span>
+          </div>
+          <div v-if="showSuggestions && filteredTests.length" class="box" style="position: absolute; z-index: 10; width: 100%; max-height: 200px; overflow-y: auto;">
+            <div v-for="test in filteredTests" :key="test.id" class="dropdown-item" :class="{'has-background-info-light': test.id === selectedTestId}" @mousedown.prevent="selectTest(test)">
+              {{ test.title }}
             </div>
           </div>
         </div>
-        <button class="button is-primary is-fullwidth" :disabled="!selectedTestId" @click="loadTest">Начать тест</button>
+        <button class="button is-primary is-fullwidth mt-4" :disabled="!selectedTestId" @click="loadTest">Начать тест</button>
       </div>
     </div>
     <div v-else>
@@ -62,7 +63,9 @@ export default {
       selectedTestId: '',
       selectedTest: null,
       userAnswers: [],
-      resultMessage: ''
+      resultMessage: '',
+      searchQuery: '',
+      showSuggestions: false
     };
   },
   created() {
@@ -72,42 +75,102 @@ export default {
     async fetchTests() {
       this.loading = true;
       try {
-        const res = await axios.get('/api/tests/');
+        const token = localStorage.getItem('token');
+        const res = await axios.get('http://127.0.0.1:8000/api/v1/tests/', {
+          headers: { Authorization: `Token ${token}` }
+        });
         this.tests = res.data;
       } catch (e) {
         this.tests = [];
       }
       this.loading = false;
     },
+    selectTest(test) {
+      this.selectedTestId = test.id;
+      this.searchQuery = test.title;
+      this.showSuggestions = false;
+    },
+    hideSuggestions() {
+      setTimeout(() => { this.showSuggestions = false; }, 150);
+    },
     async loadTest() {
-      this.selectedTest = this.tests.find(t => t.id === this.selectedTestId);
-      // Инициализация ответов
-      this.userAnswers = this.selectedTest.questions.map(q => {
-        if (q.type === 'multiple') return [];
-        return '';
-      });
+      this.selectedTest = null;
+      this.userAnswers = [];
       this.resultMessage = '';
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`http://127.0.0.1:8000/api/v1/tests/${this.selectedTestId}/`, {
+          headers: { Authorization: `Token ${token}` }
+        });
+        this.selectedTest = {
+          ...res.data,
+          questions: res.data.questions.map(q => ({
+            ...q,
+            type: q.question_type,
+            options: q.options || []
+          }))
+        };
+        this.userAnswers = this.selectedTest.questions.map(q => {
+          if (q.type === 'multiple') return [];
+          return '';
+        });
+      } catch (e) {
+        this.selectedTest = null;
+      }
     },
     async submitAnswers() {
-      // Формируем структуру для отправки
+      // Собираем ответы в нужном формате для бэкенда
       const answers = this.selectedTest.questions.map((q, idx) => {
-        if (q.type === 'multiple') {
-          return { question: q.text, answer: this.userAnswers[idx] };
-        } else if (q.type === 'single') {
-          return { question: q.text, answer: this.userAnswers[idx] };
-        } else {
-          return { question: q.text, answer: this.userAnswers[idx] };
+        if (q.type === 'single') {
+          // userAnswers[idx] — индекс выбранного варианта
+          const selectedIdx = this.userAnswers[idx];
+          const answerId = q.options[selectedIdx]?.id;
+          return {
+            question_id: q.id,
+            answer_ids: answerId !== undefined ? [answerId] : []
+          };
+        } else if (q.type === 'multiple') {
+          // userAnswers[idx] — массив индексов выбранных вариантов
+          const selectedIdxs = this.userAnswers[idx] || [];
+          const answerIds = selectedIdxs.map(i => q.options[i]?.id).filter(Boolean);
+          return {
+            question_id: q.id,
+            answer_ids: answerIds
+          };
+        } else if (q.type === 'text') {
+          return {
+            question_id: q.id,
+            text: this.userAnswers[idx]
+          };
         }
-      });
+        return null;
+      }).filter(Boolean);
       try {
-        await axios.post('/api/tests/submit', {
-          testId: this.selectedTest.id,
+        const token = localStorage.getItem('token');
+        await axios.post('http://127.0.0.1:8000/api/v1/tests/submit/', {
+          test_id: this.selectedTestId,
           answers
+        }, {
+          headers: { Authorization: `Token ${token}` }
         });
         this.resultMessage = 'Ответы успешно отправлены!';
+        setTimeout(() => {
+          this.selectedTest = null;
+          this.selectedTestId = '';
+          this.userAnswers = [];
+          this.resultMessage = '';
+          this.searchQuery = '';
+        }, 1200);
       } catch (e) {
         this.resultMessage = 'Ошибка при отправке ответов.';
       }
+    }
+  },
+  computed: {
+    filteredTests() {
+      const q = this.searchQuery.trim().toLowerCase();
+      if (!q) return this.tests;
+      return this.tests.filter(t => t.title.toLowerCase().includes(q));
     }
   }
 };
@@ -124,5 +187,17 @@ export default {
   border: 1px solid #eaeaea;
   border-radius: 8px;
   background: #f8f8f8;
+}
+.field label.radio,
+.field label.checkbox {
+  word-break: break-word;
+  white-space: normal;
+  display: flex;
+  align-items: flex-start;
+}
+.field label.radio input,
+.field label.checkbox input {
+  margin-top: 0.2em;
+  margin-right: 0.5em;
 }
 </style>

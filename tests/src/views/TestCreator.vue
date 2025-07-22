@@ -148,15 +148,15 @@ export default {
         if (q.type === 'text') {
           return {
             text: q.text,
-            type: q.type,
+            question_type: q.type, // исправлено
             options: [],
             correctAnswer: q.correctAnswer
           };
         } else {
           return {
             text: q.text,
-            type: q.type,
-            options: q.options.map(opt => ({ text: opt.text, correct: !!opt.correct })),
+            question_type: q.type, // исправлено
+            options: q.options.map(opt => ({ text: opt.text, is_correct: !!opt.correct })), // исправлено
             correctAnswer: ''
           };
         }
@@ -166,7 +166,16 @@ export default {
         questions: questionsToSend
       };
       try {
-        await axios.post('/api/tests/create', payload);
+        const token = localStorage.getItem('token');
+        await axios.post(
+          'http://127.0.0.1:8000/api/v1/tests/create/',
+          payload,
+          {
+            headers: {
+              Authorization: `Token ${token}`
+            }
+          }
+        );
         this.successMessage = 'Тест успешно создан!';
         this.testTitle = '';
         this.questions = [{

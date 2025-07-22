@@ -6,6 +6,8 @@
 </template>
 
 <script>
+import axios from 'axios';
+
 export default {
   name: 'Profile',
   data() {
@@ -19,6 +21,7 @@ export default {
   },
   methods: {
     logout() {
+      axios.defaults.headers.common["Authorization"] = ""
       localStorage.removeItem('token');
       localStorage.removeItem('username');
       this.$router.push('/login');

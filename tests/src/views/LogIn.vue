@@ -76,6 +76,7 @@ export default {
                     .then(response => {
                         // Если сервер возвращает токен, сохраняем его
                         if (response.data && response.data.auth_token) {
+                            axios.defaults.headers.common["Authorization"] = "Token" + response.data.auth_token
                             localStorage.setItem('token', response.data.auth_token);
                             localStorage.setItem('username', this.username);
                             console.log(response.data.auth_token)
